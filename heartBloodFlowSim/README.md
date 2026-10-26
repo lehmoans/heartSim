@@ -30,23 +30,23 @@ The original paper's exact geometry, complete heart muscle/valve model, source/s
 
 For constant-density incompressible flow, the paper uses the Navier–Stokes equations with a force density representing immersed tissue:
 
-\[
+```math
 \rho\left(\frac{\partial \mathbf u}{\partial t}+\mathbf u\cdot\nabla\mathbf u\right)
 =-\nabla p+\mu\nabla^2\mathbf u+\mathbf F,\qquad
 \nabla\cdot\mathbf u=0.
-\]
+```
 
-The boundary is represented by moving points \(\mathbf X(s,t)\). A regularised delta kernel transfers quantities between the boundary and the fixed grid:
+The boundary is represented by moving points $\mathbf X(s,t)$. A regularised delta kernel transfers quantities between the boundary and the fixed grid:
 
-\[
+```math
 \mathbf F(\mathbf x,t)=\int \mathbf f(s,t)\,\delta_h(\mathbf x-\mathbf X(s,t))\,ds,
-\]
-\[
+```
+```math
 \frac{\partial\mathbf X}{\partial t}
 =\int \mathbf u(\mathbf x,t)\,\delta_h(\mathbf x-\mathbf X(s,t))\,d\mathbf x.
-\]
+```
 
-The force law \(\mathbf f\) depends on the boundary configuration. The paper discretises the boundary as a link structure; for a simple spring-like link, tension acts along the line joining its endpoints. At each time step, the boundary configuration and fluid velocity are updated in a coupled sequence, and a pressure solve enforces discrete incompressibility.
+The force law $\mathbf f$ depends on the boundary configuration. The paper discretises the boundary as a link structure; for a simple spring-like link, tension acts along the line joining its endpoints. At each time step, the boundary configuration and fluid velocity are updated in a coupled sequence, and a pressure solve enforces discrete incompressibility.
 
 ## Run the notebook
 
