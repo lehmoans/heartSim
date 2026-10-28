@@ -129,9 +129,11 @@ Open [pulsatile_membrane_numerical_work.ipynb](pulsatile_membrane_numerical_work
 
 The notebook now includes an educational oscillating-lid cavity prototype that advances a simplified 2D incompressible Navier–Stokes flow and plots:
 
-- final velocity magnitude with velocity vectors;
-- final streamlines;
-- relative pressure;
+- final speed-magnitude field with velocity vectors;
+- horizontal and vertical velocity-component fields, $u(x,y)$ and $v(x,y)$;
+- velocity streamlines;
+- relative-pressure contour field with velocity vectors overlaid;
+- velocity-vector field coloured by speed magnitude;
 - prescribed wall speed over time;
 - interior RMS divergence over time;
 - maximum fluid speed over time.
@@ -146,7 +148,7 @@ Before treating the project as a complete internal-membrane simulation:
 2. Choose physically consistent chamber geometry and inlet/outlet or volume-preserving motion.
 3. Add internal Lagrangian membrane markers and a documented direct-forcing/penalty coupling method.
 4. Track marker slip, pressure-solver residual, discrete divergence, integrated force, and volume flux.
-5. Generate plots of velocity, streamlines, pressure, membrane position, marker slip, divergence, and flux over at least one cycle.
+5. Generate spatial plots of both velocity components, speed magnitude, velocity vectors/streamlines, pressure contours with velocity vectors overlaid, membrane position, marker slip, divergence, and flux over at least one cycle.
 6. Demonstrate time-step and grid-refinement convergence.
 7. Add elastic membrane mechanics only after the prescribed-motion case passes the tests.
 
