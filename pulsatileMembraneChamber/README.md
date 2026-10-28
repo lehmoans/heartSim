@@ -123,3 +123,31 @@ Open [pulsatile_membrane_numerical_work.ipynb](pulsatile_membrane_numerical_work
 
 - Peskin, C. S. (1977), *Numerical Analysis of Blood Flow in the Heart*, Journal of Computational Physics, 25(3), 220–252. DOI: [10.1016/0021-9991(77)90100-0](https://doi.org/10.1016/0021-9991(77)90100-0).
 - The notebook derives the simplified projection and immersed-boundary concepts used for learning; consult the original paper for its specific formulation and numerical choices.
+
+
+## Extended notebook: end-to-end flow benchmark and plots
+
+The notebook now includes an educational oscillating-lid cavity prototype that advances a simplified 2D incompressible Navier–Stokes flow and plots:
+
+- final velocity magnitude with velocity vectors;
+- final streamlines;
+- relative pressure;
+- prescribed wall speed over time;
+- interior RMS divergence over time;
+- maximum fluid speed over time.
+
+This moving-lid cavity is an intermediate benchmark for testing the fluid update, pressure solve, wall conditions, and diagnostics. It is **not** the final internal pulsatile membrane simulation and is not a faithful reproduction of Peskin's complete heart-flow solver. The notebook labels the collocated finite-difference projection scheme as educational and lists its remaining numerical validation work.
+
+## Remaining work for the internal membrane
+
+Before treating the project as a complete internal-membrane simulation:
+
+1. Upgrade or independently validate the fluid discretisation with compatible pressure/velocity operators.
+2. Choose physically consistent chamber geometry and inlet/outlet or volume-preserving motion.
+3. Add internal Lagrangian membrane markers and a documented direct-forcing/penalty coupling method.
+4. Track marker slip, pressure-solver residual, discrete divergence, integrated force, and volume flux.
+5. Generate plots of velocity, streamlines, pressure, membrane position, marker slip, divergence, and flux over at least one cycle.
+6. Demonstrate time-step and grid-refinement convergence.
+7. Add elastic membrane mechanics only after the prescribed-motion case passes the tests.
+
+A simulation should not be considered complete merely because it produces smooth plots. Record the boundary conditions, parameters, tolerances, and convergence results.
