@@ -153,3 +153,10 @@ Before treating the project as a complete internal-membrane simulation:
 7. Add elastic membrane mechanics only after the prescribed-motion case passes the tests.
 
 A simulation should not be considered complete merely because it produces smooth plots. Record the boundary conditions, parameters, tolerances, and convergence results.
+
+
+## Standalone Python script
+
+[`model.py`](model.py) consolidates the notebook's code cells and their comments into one Python script, in notebook execution order. It includes the analytical kinematics example, spectral projection test, immersed-boundary kernel and force-spreading checks, interpolation example, time-step estimates, oscillating-lid flow prototype, and plotting/diagnostic code. Install `numpy` and `matplotlib`, then run it with `python model.py`.
+
+The script runs these educational examples sequentially and later sections reuse some variable names. It remains a learning prototype; the oscillating-lid scheme has not been independently validated and is not yet a full internal-membrane simulation.
