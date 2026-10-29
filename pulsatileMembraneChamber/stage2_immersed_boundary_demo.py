@@ -58,9 +58,9 @@ def spread_marker_forces(fx, fy, xm, ym, fmx, fmy, ds, X, Y, dx, dy, Lx, Ly):
     return fx, fy
 
 
-def pressure_poisson_periodic(rhs, dx, dy, iterations=100):
+def pressure_poisson_periodic(rhs, dx, dy, iterations=200, initial=None):
     """Jacobi solve of the periodic five-point Poisson equation; pressure mean is zero."""
-    p = np.zeros_like(rhs)
+    p = np.zeros_like(rhs) if initial is None else initial.copy()
     p_next = np.zeros_like(rhs)
     dx2, dy2 = dx * dx, dy * dy
     denom = 2.0 * (dx2 + dy2)
@@ -106,7 +106,7 @@ def main():
     nu = 0.01
     dt = 0.001
     n_steps = 200
-    pressure_iterations = 100
+    pressure_iterations = 200
 
     # Prescribed line motion: tangential translation, not chamber pumping.
     n_markers = 32
@@ -126,6 +126,7 @@ def main():
 
     times, target_speeds, marker_speeds = [], [], []
     div_rms = []
+    poisson_residual_rms = []
     final_fx = np.zeros_like(u)
     final_fy = np.zeros_like(v)
 
@@ -170,7 +171,9 @@ def main():
 
         # Pressure projection. The discrete divergence and gradient are paired.
         rhs = (rho / dt) * forward_divergence(u_star, v_star, dx, dy)
-        p = pressure_poisson_periodic(rhs, dx, dy, pressure_iterations)
+        p = pressure_poisson_periodic(rhs, dx, dy, pressure_iterations, initial=p)
+        poisson_residual = laplacian(p, dx, dy) - rhs
+        poisson_residual_rms.append(float(np.sqrt(np.mean(poisson_residual**2))))
         grad_px, grad_py = backward_gradient(p, dx, dy)
         u = u_star - (dt / rho) * grad_px
         v = v_star - (dt / rho) * grad_py
@@ -206,6 +209,7 @@ def main():
 
     print(f"Grid: {nx} x {ny}; steps: {n_steps}; dt: {dt:g}")
     print(f"Final RMS discrete divergence: {div_rms[-1]:.4e}")
+    print(f"Final RMS pressure-Poisson residual: {poisson_residual_rms[-1]:.4e}")
     print(f"Final maximum speed: {np.max(speed):.4e}")
     print("Prototype only: inspect time-step, pressure-iteration, and penalty-gain sensitivity.")
     print("Not yet a closed chamber, validated solver, or physiological pump model.")
