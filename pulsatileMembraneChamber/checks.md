@@ -108,3 +108,23 @@ For every test, record:
 | Date | Test / case | Expected result or tolerance | Measured result / error | Pass? | Evidence / notes |
 |---|---|---|---|---|---|
 | | | | | | |
+
+
+## J. Stage 2 immersed-boundary coupling demo
+
+File: `stage2_immersed_boundary_demo.py`
+
+This is a small integration experiment using a periodically translating line of markers. It is **not** a closed pulsatile chamber.
+
+- [ ] Run the script from a fresh terminal and record versions, run command, and any warnings.
+- [ ] Check that zero membrane amplitude produces zero prescribed marker speed and no forcing (after setting the amplitude to zero).
+- [ ] Check the marker target velocity against the derivative of its prescribed displacement.
+- [ ] Test interpolation on a constant velocity field and verify that it returns the same constant.
+- [ ] Compare the integrated Eulerian spread force with the integrated Lagrangian marker force.
+- [ ] Record the pressure Poisson residual as well as divergence before/after projection; do not rely on divergence alone.
+- [ ] Increase pressure iterations and verify whether the projection diagnostics converge.
+- [ ] Halve the time step and compare velocity, marker slip, and divergence.
+- [ ] Vary the penalty gain and check for instability or excessive forcing.
+- [ ] Refine the grid and marker spacing together; compare the same diagnostic quantities.
+- [ ] Confirm all fields remain finite and that no unexplained energy growth occurs.
+- [ ] Document the limitation: periodic tangential translation demonstrates the coupling mechanism but does not yet model chamber-volume change or pumping.
