@@ -160,3 +160,32 @@ A simulation should not be considered complete merely because it produces smooth
 [`model.py`](model.py) consolidates the notebook's code cells and their comments into one Python script, in notebook execution order. It includes the analytical kinematics example, spectral projection test, immersed-boundary kernel and force-spreading checks, interpolation example, time-step estimates, oscillating-lid flow prototype, and plotting/diagnostic code. Install `numpy` and `matplotlib`, then run it with `python model.py`.
 
 The script runs these educational examples sequentially and later sections reuse some variable names. It remains a learning prototype; the oscillating-lid scheme has not been independently validated and is not yet a full internal-membrane simulation.
+
+
+## Stage 2 prototype: prescribed immersed-boundary coupling
+
+The new [stage2_immersed_boundary_demo.py](stage2_immersed_boundary_demo.py) integrates several previously separate ideas in one small experiment:
+
+1. a periodic 2D incompressible fluid update with advection and viscosity;
+2. a moving set of Lagrangian markers with prescribed sinusoidal motion;
+3. regularised-delta interpolation of fluid velocity to the markers;
+4. penalty feedback to calculate marker forces;
+5. force spreading back to the Eulerian grid;
+6. pressure projection and diagnostics.
+
+Run it with:
+
+```bash
+python stage2_immersed_boundary_demo.py
+```
+
+Dependencies remain NumPy and Matplotlib. The demonstration uses a periodic line translating tangentially, not a closed membrane that changes chamber volume. It is intended to demonstrate the coupling data path, not to represent pumping or validated heart flow. Its numerical behaviour has not yet been independently verified; complete the Stage 2 checklist before interpreting its plots. In particular, study pressure-solver convergence, discrete divergence, time-step sensitivity, penalty-gain sensitivity, and force-transfer consistency.
+
+## Next implementation milestones
+
+1. **Verify Stage 2:** test the kernel and transfer operators independently; record divergence and pressure residuals; vary the time step, pressure iteration count, grid resolution, and penalty gain.
+2. **Move to a closed membrane:** choose a geometry and prescribed deformation that is compatible with incompressible volume conservation and the domain boundary conditions.
+3. **Add chamber walls and ports:** define inlet/outlet boundary conditions and measure net volume flux over a cycle.
+4. **Add membrane mechanics:** derive elastic marker forces from a documented energy or force law.
+5. **Close the fluid–structure feedback loop:** calculate membrane forces from deformation and fluid traction, then check coupling stability and conservation.
+6. **Validate before claiming pump performance:** compare against analytical limiting cases or published benchmarks and demonstrate grid/time-step convergence.
