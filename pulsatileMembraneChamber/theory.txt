@@ -633,3 +633,342 @@ The references describe general immersed-boundary and FSI theory. The
 specific numerical choices in this project are simplified educational
 approximations and should not be attributed as exact reproductions of
 the cited methods.
+
+
+18. TARGET PHYSICAL CONFIGURATION
+
+The intended system is a two-dimensional fluid cavity whose volume changes
+because one boundary is a pulsating membrane. Consider two configurations
+separately.
+
+A. Open cavity: rigid side and bottom walls, a moving membrane boundary,
+and one port connected to an external reservoir. "Open" must mean a
+well-defined fluid opening with a boundary condition. It must not mean an
+unspecified missing wall. A free surface exposed to gas is a different
+problem and requires interface kinematics and stress balance (and possibly
+surface tension).
+
+B. Two-channel cavity: the same cavity connected to a finite inlet channel
+and a finite outlet channel. Each channel has its own length, cross-section,
+wall boundary, and far-field reservoir condition. Inlet/outlet are labels
+for the intended operating direction; instantaneous flow can reverse
+unless valves are modelled.
+
+The first model should be two-dimensional, incompressible, Newtonian,
+constant-density and constant-viscosity. State the assumed out-of-plane
+depth b. Without b, areas and flows are per unit depth.
+
+19. CAVITY AND MEMBRANE GEOMETRY
+
+For a rectangular cavity of width W and height H, a roof membrane can be
+described by:
+
+y_m(x,t) = y_0(x) + A g(x) sin(omega t)
+
+Choose g(0)=g(W)=0 for fixed endpoints. One smooth choice is:
+
+g(x) = sin(pi x/W)
+
+For a flat floor at y=0, the cavity cross-sectional area is:
+
+A_c(t) = integral_0^W y_m(x,t) dx
+
+For the chosen shape:
+
+A_c(t) = A_0 + (2 A W/pi) sin(omega t)
+
+V_c(t) = b A_c(t)
+
+dV_c/dt = (2 A W b omega/pi) cos(omega t)
+
+The marker position is X(s,t); its boundary velocity is U_b=partial X/partial t.
+For finite slopes, use the true geometric normal rather than assuming
+vertical velocity is normal velocity. Specify whether membrane endpoints
+are clamped, pinned, or free. Ensure the membrane cannot intersect the
+floor, side walls, or ports.
+
+A prescribed sinusoid is a kinematic input, not a membrane mechanics
+model. It answers how the fluid responds to imposed motion; it does not
+predict the motion from fluid loading.
+
+20. GLOBAL CONSERVATION
+
+Define Q_in positive into the cavity and Q_out positive out of it.
+For incompressible fluid:
+
+dV_c/dt = Q_in - Q_out
+
+For a strictly 2D per-unit-depth calculation:
+
+dA_c/dt = q_in - q_out
+
+During expansion, net inflow is required. During contraction, net outflow
+is required. In a periodic steady state, the time-integrated inlet and
+outlet volumes over one full cycle must agree if there are no leaks or
+other storage mechanisms.
+
+For one port with signed flow positive inward:
+
+Q_port = dV_c/dt
+
+Calculate port flow by integrating velocity over each port cross-section,
+not by sampling one grid point. Monitor:
+
+e_V(t) = Q_in - Q_out - dV_c/dt
+
+A small visual divergence plot is not a substitute for this global balance.
+
+21. BOUNDARY CONDITIONS: OPEN CAVITY
+
+Stationary rigid walls:
+u = 0  (no-slip)
+
+Moving membrane:
+u = U_b  (no-slip idealisation)
+At minimum, enforce (u-U_b) dot n = 0 to prevent fluid crossing the
+membrane. A viscous solid membrane normally also imposes tangential
+no-slip.
+
+Single port: choose one primary condition. Either prescribe reservoir
+pressure/traction and let flow emerge, or prescribe a physically justified
+velocity/flow waveform and let pressure emerge. Do not impose arbitrary
+pressure and velocity simultaneously at the same boundary. Allow backflow
+if the pulsation can reverse flow. Place the reservoir boundary far enough
+away, or include a connecting channel, to avoid imposing an artificial
+local flow profile at the cavity mouth.
+
+If the opening is a free surface rather than a port, use a free-surface
+model: interface motion, kinematic condition, normal and tangential stress
+balance, and surface tension if relevant.
+
+22. BOUNDARY CONDITIONS: TWO CHANNELS
+
+At the far inlet reservoir, prescribe either reservoir pressure p_in,res
+or a justified inlet flow/velocity profile. At the far outlet reservoir,
+prescribe either p_out,res or a justified outlet flow/velocity condition.
+Pressure-driven boundaries allow flow to be a prediction; flow-driven
+boundaries prescribe flow as an input. Avoid over-constraining either end.
+
+Channel walls:
+u = 0
+
+At the channel-cavity junctions, maintain a continuous fluid domain and
+resolve the junction geometry. Avoid putting the pressure boundary right
+at a sharp junction. If flow reversal is possible, outlet treatment must
+permit it. A check valve requires an explicit valve law; clipping negative
+flow is merely an assumption.
+
+A useful baseline is zero initial velocity and equal reservoir pressures.
+The moving membrane then drives flow. Later vary reservoir pressure
+difference to represent preload/afterload. Do not prescribe independent
+inlet and outlet flow waveforms unless they are deliberately being used
+as a forcing test; they must still satisfy the volume balance.
+
+23. CHANNEL HYDRAULICS
+
+For steady, fully developed, laminar Newtonian flow in a circular tube:
+
+Q = (pi r^4/(8 mu L)) Delta p
+R_h = 8 mu L/(pi r^4)
+
+For a wide, shallow planar slit of gap h, per unit span:
+
+q = (h^3/(12 mu L)) Delta p
+
+These are limiting resistance estimates, not general pulsatile CFD laws.
+They assume rigid geometry and fully developed flow. Pulsatile flow can
+include unsteady inertia, entrance effects, profile development, and
+compliant walls.
+
+A reduced-order channel model may include resistance and fluid inertance:
+
+Delta p = R_h Q + L_h dQ/dt
+L_h = rho L/A_ch
+
+where A_ch is channel cross-sectional area. A compliant chamber can be
+approximated by C=dV/dp. Do not add a lumped resistance or inertance for
+effects already resolved inside the CFD domain; that double-counts them.
+Use lumped elements for unresolved tubing or external reservoirs.
+
+24. FLUID STRESS AND MEMBRANE LOADING
+
+For a Newtonian incompressible fluid:
+
+sigma_f = -p I + mu[grad(u) + grad(u)^T]
+
+The traction exerted by fluid on a surface is:
+
+t_f = sigma_f n
+
+The net force is the integral of traction over the membrane. Pressure
+provides normal loading; viscous stresses can provide both normal and
+tangential loading. In 2D, force is per unit depth unless multiplied by b.
+
+A prescribed-motion simulation can calculate the load required to enforce
+the motion, but cannot claim that the membrane would move that way under
+the load. To predict deformation, add a structural force balance.
+
+25. MEMBRANE MECHANICS LEVELS
+
+Level 1: prescribe X(s,t), solve only the fluid response.
+Level 2: elastic membrane plus prescribed active tension/activation.
+Level 3: fully coupled FSI, with fluid traction and membrane mechanics
+jointly determining motion.
+
+A schematic structural balance is:
+
+m_s partial^2 X/partial t^2
+  = partial(T tau)/partial s + f_bend + f_active + f_fluid
+
+where m_s is membrane mass per reference length, T is tension, tau is
+unit tangent, and the remaining terms are bending, active, and fluid
+forces. A massless membrane neglects structural inertia; state this
+assumption. Biological membranes may require nonlinear elasticity,
+anisotropy, pre-stress, viscoelasticity, or active contraction. A simple
+spring chain or tension-only curve is an educational approximation.
+
+26. ENERGY AND PERFORMANCE
+
+Membrane power delivered to fluid:
+
+P_mem = integral_membrane t_on_fluid dot U_b dS
+
+Pressure-flow power at a port, relative to a common reference pressure:
+
+P_port = (p_port-p_ref) Q_port
+
+Net pressure work over a cycle:
+
+W_cycle = integral_0^T Delta p(t) Q(t) dt
+
+Fluid kinetic energy:
+
+E_kin = (1/2) integral_Omega rho |u|^2 dV
+
+Viscous dissipation for incompressible Newtonian flow:
+
+D_visc = integral_Omega 2 mu D:D dV
+
+where D=(grad(u)+grad(u)^T)/2. Use signed flows consistently. In a
+periodic state, the kinetic energy at cycle end should return close to
+its initial value; membrane/pressure work must balance dissipation and
+net energy exported through ports, within numerical error.
+
+27. DIMENSIONLESS REGIME
+
+Re = rho U L/mu
+alpha = L sqrt(omega rho/mu)
+St = omega L/U
+epsilon_A = A/L
+
+Re compares inertia and viscosity; Womersley alpha compares unsteady
+inertia and viscous diffusion; St compares oscillation and convection
+time scales; epsilon_A measures relative membrane amplitude. State the
+characteristic length used, especially for alpha. Estimate these before
+choosing the grid and time step.
+
+28. INITIAL CONDITIONS AND START-UP
+
+Specify u(x,0), membrane position and velocity, and reservoir pressures.
+A baseline is fluid at rest, equal reservoir pressures, and membrane at
+its mean position. Choose sinusoidal phase so initial membrane velocity
+is compatible with the initial fluid state, or ramp the motion smoothly.
+In incompressible flow pressure is defined up to a constant: fix a
+reservoir reference pressure or a pressure gauge.
+
+29. NUMERICAL METHODS AND INTERFACE COUPLING
+
+Body-fitted/ALE methods move the mesh with the boundary and must account
+for mesh velocity in advection; mesh distortion is a concern.
+
+Immersed-boundary methods keep a fixed Eulerian grid and track membrane
+markers in Lagrangian coordinates. A regularised delta kernel spreads
+marker force to the grid and interpolates fluid velocity to markers.
+Marker spacing, grid spacing, kernel support, and minimum wall gap must
+be compatible. Sparse markers can cause leakage; excessive marker
+density can stiffen coupling. A kernel can smear a narrow channel or gap.
+
+For a projection fluid solver, a predictor and pressure correction are:
+
+u_star = u_n + Delta t[-(u dot grad)u + nu laplacian(u) + F/rho]
+u_(n+1) = u_star - (Delta t/rho) grad(p)
+laplacian(p) = (rho/Delta t) div(u_star)
+
+The discrete divergence, gradient, and pressure Laplacian must be
+compatible. Derive pressure boundary conditions from the actual velocity
+boundary conditions; homogeneous Neumann pressure conditions are not
+automatically correct everywhere. Monitor pressure residual, not merely
+a fixed iteration count.
+
+30. TIME STEP AND RESOLUTION
+
+Resolve advection, viscous diffusion, membrane motion, port-flow reversal,
+and any elastic or penalty-coupling time scales. Typical estimates are:
+
+CFL = U_max Delta t/h
+nu Delta t(1/dx^2 + 1/dy^2) <= 1/2
+
+The exact limits depend on the numerical scheme. Implicit diffusion
+relaxes a stability limit but not accuracy requirements. Resolve enough
+time steps per period to capture pressure peaks, phase lag, and reversal.
+Refine the time step and grid independently.
+
+The grid must resolve the narrowest channel dimension, membrane curvature,
+smallest wall gap, and channel-cavity junction. Channel resistance is
+highly sensitive to channel gap. Perform grid refinement and marker
+spacing studies; compare flow, pressure, phase, cycle volume, and work,
+not just images.
+
+31. VERIFICATION CHECKLIST
+
+Before interpreting the pulsatile case:
+
+- Verify membrane position, velocity, acceleration, and area analytically.
+- Verify a stationary-wall fluid case.
+- Verify pressure-driven steady channel flow against Poiseuille/slit
+  theory in its valid regime.
+- Verify pressure projection using discrete divergence norms.
+- Verify moving-wall no-slip/no-penetration and marker slip.
+- Verify force spreading and interpolation consistency.
+- Verify port flow by cross-sectional integration.
+- Verify e_V(t) and cycle-integrated inlet/outlet volume.
+- Verify pressure-solver residual and time-step sensitivity.
+- Verify grid and marker-spacing convergence.
+- Verify cycle energy balance before reporting efficiency or work.
+
+For a two-channel case, first run a steady pressure-driven channel test
+with the membrane stationary. Then run equal reservoir pressures with
+prescribed membrane pulsation. Only after these pass should more complex
+reservoir pressure differences, valves, or elastic mechanics be added.
+
+32. PHYSICAL LIMITATIONS AND REPORTING
+
+A two-dimensional simulation is not a three-dimensional physiological
+model. State depth, geometry, fluid properties, channel dimensions,
+reservoir conditions, membrane law, boundary conditions, and numerical
+resolution. State whether the membrane is prescribed, elastic, or fully
+coupled. State whether channels are rigid or compliant and whether valves
+are present. Mention neglected turbulence, gravity, surface tension,
+compressibility, or non-Newtonian effects where relevant.
+
+Verification means solving the chosen equations correctly. Validation
+means showing that those equations represent the physical system,
+through analytical limits, published benchmarks, or matching experimental
+data. Smooth plots alone demonstrate neither.
+
+33. RECOMMENDED THEORY-TO-SIMULATION ORDER
+
+1. Derive cavity area and volume from the chosen membrane geometry.
+2. Solve the open-cavity, one-port configuration with explicit reservoir
+   conditions and check signed port flow against dV/dt.
+3. Add finite inlet and outlet channels and define each far-field BC.
+4. Verify stationary channel flow and pressure drop.
+5. Drive the membrane with prescribed motion and check global volume
+   balance over several cycles.
+6. Reach periodic behaviour and compare pressure, flow, phase, and work.
+7. Only then add elastic membrane mechanics and two-way fluid feedback.
+
+For every case record geometry, parameters, initial conditions, boundary
+conditions, governing equations, numerical method, grid, time step,
+solver tolerance, and verification results. This is what makes the
+simulation reproducible and its claims assessable.
