@@ -1,0 +1,635 @@
+PULSATILE MEMBRANE CHAMBER — THEORY
+====================================
+
+Purpose
+-------
+This document collects the physical and mathematical theory for the
+pulsatileMembraneChamber project. Equations are written in linear, Word
+Equation Editor-friendly form. In Microsoft Word press Alt+=, then paste
+the equation line. Use the surrounding text for definitions and assumptions.
+
+This is a two-dimensional educational fluid–structure interaction (FSI)
+model. The current project begins with prescribed membrane kinematics and
+builds toward an immersed-boundary representation. It is not a physiological
+heart model and the current translating-line demonstration is not a chamber
+pump.
+
+1. MODEL SCOPE AND PHYSICAL IDEALISATIONS
+-----------------------------------------
+
+The initial fluid model assumes:
+- two-dimensional flow;
+- incompressible Newtonian fluid;
+- constant density rho and dynamic viscosity mu;
+- a fixed Eulerian Cartesian grid;
+- a membrane represented by moving Lagrangian points or markers;
+- prescribed membrane motion in the first stage;
+- no prediction of muscle activation or membrane motion from fluid loading.
+
+The later elastic stage replaces prescribed motion with a constitutive
+membrane model. A fully coupled FSI model must allow fluid forces to affect
+the membrane and membrane forces to affect the fluid.
+
+Important distinction:
+Prescribed motion answers: "How does the fluid respond to this imposed
+boundary motion?"
+A two-way FSI model answers: "How does the membrane move under its material
+forces and the fluid loads, and how does that motion alter the fluid?"
+
+2. MEMBRANE KINEMATICS — PRESCRIBED PULSATION
+---------------------------------------------
+
+For a single coordinate moving sinusoidally about a mean position:
+
+y_m(t) = y_0 + A sin(2 pi f t)
+
+Differentiate with respect to time:
+
+v_m(t) = dy_m/dt = 2 pi f A cos(2 pi f t)
+
+Differentiate again:
+
+a_m(t) = d^2 y_m/dt^2 = -(2 pi f)^2 A sin(2 pi f t)
+
+Angular frequency and period:
+
+omega = 2 pi f
+
+T = 1/f = 2 pi/omega
+
+where:
+y_0 = mean position [m]
+A = displacement amplitude [m]
+f = frequency [Hz]
+omega = angular frequency [rad/s]
+T = period [s]
+v_m = membrane velocity [m/s]
+a_m = membrane acceleration [m/s^2]
+
+The maximum speed and acceleration are:
+
+v_max = omega A
+
+a_max = omega^2 A
+
+The displacement, velocity and acceleration are phase-shifted:
+- at maximum displacement, velocity is zero;
+- at the mean position, speed is maximum;
+- acceleration always points toward the mean position.
+
+A more general two-dimensional membrane is described by marker position:
+
+X(s,t) = (X_1(s,t), X_2(s,t))
+
+For a prescribed deformation:
+
+X(s,t) = X_0(s) + d(s,t)
+
+U_b(s,t) = partial X(s,t)/partial t
+
+Here s is a material coordinate along the membrane, X_0 is its reference
+configuration, d is its displacement, and U_b is its prescribed velocity.
+
+A translating membrane and a deforming membrane are not equivalent. A
+closed chamber generally needs a shape change that alters its enclosed
+volume. Pure tangential translation of a straight periodic line does not
+create chamber volume displacement.
+
+3. CHAMBER GEOMETRY AND VOLUME CONSERVATION
+-------------------------------------------
+
+For a two-dimensional chamber of unit depth, area plays the role of volume.
+For a physical chamber with depth b:
+
+V(t) = b A_c(t)
+
+where A_c is the enclosed two-dimensional area.
+
+For a closed incompressible chamber with no ports, the enclosed fluid volume
+cannot change. A membrane cannot simply move inward and reduce the volume
+unless another boundary moves outward, another chamber expands, or fluid
+leaves through an opening.
+
+For a chamber with inlet and outlet flow, conservation gives:
+
+dV/dt = Q_in - Q_out
+
+The sign convention is that Q_in is positive into the chamber and Q_out is
+positive out of it.
+
+For a prescribed chamber-volume waveform:
+
+V(t) = V_0 + Delta V sin(2 pi f t)
+
+the required net flow is:
+
+Q_in - Q_out = dV/dt
+             = 2 pi f Delta V cos(2 pi f t)
+
+This is a useful global consistency check. The integral of net flow over a
+complete periodic cycle must be zero if the chamber returns to its starting
+volume:
+
+integral_0^T (Q_in - Q_out) dt = 0
+
+For a deforming closed planar curve X(s,t), its enclosed area can be
+calculated from Green's theorem:
+
+A_c(t) = (1/2) integral (X_1 dX_2/ds - X_2 dX_1/ds) ds
+
+The curve orientation determines the sign; use the absolute value or a
+consistent orientation for physical area.
+
+The instantaneous area rate is related to normal boundary velocity:
+
+dA_c/dt = integral_boundary U_b dot n ds
+
+where n is the outward unit normal. For a closed incompressible chamber
+without ports, this integral must be zero. This is why arbitrary prescribed
+normal motion can be incompatible with incompressibility.
+
+4. FLUID GOVERNING EQUATIONS
+----------------------------
+
+The fluid velocity is u(x,t) and pressure is p(x,t). For a Newtonian,
+incompressible fluid with constant density and viscosity:
+
+rho (partial u/partial t + (u dot grad)u)
+    = -grad p + mu laplacian(u) + F
+
+grad dot u = 0
+
+where:
+rho = fluid density [kg/m^3]
+mu = dynamic viscosity [Pa s]
+nu = mu/rho = kinematic viscosity [m^2/s]
+p = pressure [Pa]
+F = body-force density [N/m^3]
+u = velocity [m/s]
+
+The momentum equation represents Newton's second law per unit volume:
+- local acceleration: rho partial u/partial t;
+- convective acceleration: rho (u dot grad)u;
+- pressure force: -grad p;
+- viscous force: mu laplacian(u);
+- immersed or external force: F.
+
+The incompressibility condition states that fluid parcels do not undergo
+volumetric expansion:
+
+grad dot u = 0
+
+In two dimensions:
+
+partial u_x/partial x + partial u_y/partial y = 0
+
+Pressure in incompressible flow acts as a constraint force. It adjusts so
+that the velocity field satisfies the divergence-free condition, subject
+to the domain geometry and boundary conditions.
+
+5. DIMENSIONLESS FLOW PARAMETERS
+--------------------------------
+
+Reynolds number compares inertia with viscous effects:
+
+Re = rho U L / mu = U L / nu
+
+where U and L are characteristic velocity and length scales.
+
+Interpretation:
+- small Re: viscous effects are relatively important;
+- large Re: inertial effects are relatively important.
+
+For periodically driven flow, the Womersley number compares unsteady
+inertia with viscous diffusion:
+
+alpha = L sqrt(omega rho/mu)
+      = L sqrt(omega/nu)
+
+The exact characteristic length convention must be stated for the geometry
+being studied (for example, radius in a circular tube).
+
+A related oscillatory-flow parameter is the Strouhal number:
+
+St = omega L/U
+
+These parameters help distinguish quasi-steady behaviour from strongly
+unsteady behaviour. They do not by themselves validate a model.
+
+6. PRESSURE-PROJECTION METHOD
+----------------------------
+
+A projection method separates a momentum predictor from the pressure
+correction.
+
+First calculate a provisional velocity u_star without the new pressure
+correction. Then correct it:
+
+u_(n+1) = u_star - (Delta t/rho) grad p
+
+Impose incompressibility:
+
+grad dot u_(n+1) = 0
+
+Substitute the velocity correction:
+
+grad dot [u_star - (Delta t/rho) grad p] = 0
+
+For constant density:
+
+laplacian(p) = (rho/Delta t) grad dot u_star
+
+This is the pressure Poisson equation.
+
+The pressure is defined only up to an additive constant in many closed or
+periodic settings. A pressure gauge is therefore required, for example:
+
+mean(p) = 0
+
+The pressure boundary conditions depend on the physical walls and ports.
+A periodic pressure solve is a mathematical test case, not a substitute for
+the final chamber boundary conditions.
+
+The discrete gradient, divergence and Laplacian should be compatible.
+Otherwise the numerical projection may fail to remove discrete divergence,
+even if the continuous derivation is correct.
+
+7. EULERIAN AND LAGRANGIAN DESCRIPTIONS
+---------------------------------------
+
+Eulerian description:
+Fluid quantities are stored at fixed spatial positions x on a stationary
+grid. Examples are u(x,t), p(x,t), and F(x,t).
+
+Lagrangian description:
+The membrane is tracked using material coordinates s. Its configuration is
+X(s,t), and its force density is f(s,t).
+
+The immersed-boundary method couples these descriptions without requiring
+the fluid grid to conform to the moving membrane.
+
+8. IMMERSED-BOUNDARY COUPLING
+----------------------------
+
+In the continuous formulation, membrane force is transferred to the fluid
+using a Dirac delta distribution:
+
+F(x,t) = integral f(s,t) delta(x - X(s,t)) ds
+
+Fluid velocity is interpolated to the membrane:
+
+partial X(s,t)/partial t
+    = integral u(x,t) delta(x - X(s,t)) dx
+
+The first equation spreads Lagrangian membrane force onto the Eulerian
+fluid. The second interpolates Eulerian fluid velocity to the membrane.
+
+For an elastic membrane, the interpolated fluid velocity determines the
+membrane's material motion. For prescribed kinematics, the target velocity
+is specified externally; a forcing method must then enforce consistency
+between the fluid velocity and the target marker velocity.
+
+The Dirac delta is singular. Numerically it is replaced by a regularised
+kernel delta_h with finite support.
+
+For a uniform two-dimensional grid, a tensor-product kernel is commonly
+written:
+
+delta_h(x - X) =
+    (1/(dx dy)) phi((x_1-X_1)/dx) phi((x_2-X_2)/dy)
+
+where phi is a one-dimensional regularised kernel and dx, dy are grid
+spacings.
+
+A four-point Peskin kernel has support over approximately two grid spacings
+in either direction. Its exact piecewise definition is:
+
+phi(r) =
+  (1/8) [3 - 2|r| + sqrt(1 + 4|r| - 4r^2)],  |r| <= 1
+
+phi(r) =
+  (1/8) [5 - 2|r| - sqrt(-7 + 12|r| - 4r^2)],  1 < |r| <= 2
+
+phi(r) = 0,  |r| > 2
+
+The kernel smooths the transfer between grids. It is not an exact point
+delta at finite resolution.
+
+Discrete force spreading, schematically:
+
+F_ij = sum_k f_k delta_h(x_ij - X_k) Delta s_k
+
+Discrete velocity interpolation, schematically:
+
+U_k = sum_ij u_ij delta_h(x_ij - X_k) dx dy
+
+The precise quadrature factors depend on how the discrete Lagrangian force
+and marker spacing are defined. Do not mix force per marker, force per
+unit length, and force per unit area.
+
+A key consistency principle is that spreading and interpolation should be
+constructed as compatible (often adjoint) operators. This supports
+consistent transfer of force and power between the two descriptions.
+
+9. MEMBRANE MECHANICS
+---------------------
+
+Prescribed motion is a kinematic input. It contains no constitutive law and
+does not predict deformation from load.
+
+For an elastic membrane, the Lagrangian force is obtained from an elastic
+energy functional E[X]:
+
+f(s) = - delta E[X] / delta X(s)
+
+The sign convention is that the elastic force acts to reduce the energy.
+
+A simple one-dimensional stretching model for a membrane represented by a
+curve is:
+
+E_stretch = (1/2) integral K (|partial X/partial s| - 1)^2 ds
+
+where K is an effective stretching stiffness and s is a reference
+arc-length coordinate. The corresponding force follows by taking the
+functional derivative of this energy. The precise units of K depend on
+whether the model is a two-dimensional membrane, a one-dimensional fibre,
+or a three-dimensional thin sheet.
+
+A discrete spring model between adjacent markers can be expressed as:
+
+E_spring = (1/2) sum_k k_s (|X_(k+1)-X_k| - l_0,k)^2
+
+For link k, define:
+
+d_k = X_(k+1) - X_k
+
+l_k = |d_k|
+
+e_k = d_k/l_k
+
+The spring force contribution is obtained by differentiating E_spring
+with respect to each marker position. The two endpoint forces are equal
+and opposite for an isolated link.
+
+For a membrane that resists bending, a simple discrete curvature penalty is:
+
+E_bend = (1/2) k_b sum_k |X_(k+1) - 2 X_k + X_(k-1)|^2
+
+This is a simplified discrete energy, not a universal membrane constitutive
+law. A physically calibrated membrane may require nonlinear elasticity,
+anisotropy, fibre reinforcement, pre-stress, viscoelasticity, or active
+contraction.
+
+10. PRESSURE, FLOW AND HYDRAULIC WORK
+------------------------------------
+
+Pressure difference drives flow through a hydraulic resistance. For a
+lumped linear resistance:
+
+Delta p = R_h Q
+
+where R_h is hydraulic resistance and Q is volumetric flow rate.
+
+Hydraulic power transferred to the fluid is:
+
+P_h = Delta p Q
+
+For time-varying pressure and flow:
+
+E_cycle = integral_0^T Delta p(t) Q(t) dt
+
+This is net pressure work over one cycle under the chosen sign convention.
+If pressure and flow reverse, the instantaneous power can be negative,
+meaning energy is returned to the driving system.
+
+For a moving membrane, mechanical power delivered by membrane traction
+to the fluid is:
+
+P_membrane = integral_boundary t dot U_b dS
+
+where t is the traction exerted by the membrane on the fluid and U_b is
+boundary velocity. In an immersed-boundary formulation the corresponding
+discrete power transfer should be consistent with the force-spreading and
+velocity-interpolation operators.
+
+The hydraulic relation Delta p = R_h Q is a lumped approximation. It is
+not a substitute for solving the spatial Navier–Stokes equations when
+inertial, unsteady, separation, or complex geometry effects are important.
+
+11. FLUID–STRUCTURE COUPLING LEVELS
+-----------------------------------
+
+One-way prescribed-motion coupling:
+1. Define membrane position and velocity from time.
+2. Use the motion to impose or enforce fluid boundary motion.
+3. Solve the fluid response.
+4. Do not feed fluid traction back into the membrane equation.
+
+This is useful for isolating and validating the fluid solver.
+
+Two-way fluid–structure interaction:
+1. Calculate membrane elastic and possibly active forces.
+2. Transfer membrane forces to the fluid.
+3. Advance the fluid and solve the pressure constraint.
+4. Interpolate fluid velocity to membrane markers.
+5. Advance membrane positions from the interpolated velocity.
+6. Repeat the coupled update with a stable time-integration strategy.
+
+In a fully coupled model, membrane deformation and fluid pressure influence
+one another. Strong coupling may be needed when fluid and structure
+responses are tightly linked. Explicit penalty coupling can become stiff
+and sensitive to time step and penalty gain.
+
+12. TIME-STEP AND GRID-SCALE CONSIDERATIONS
+-------------------------------------------
+
+For explicit advection, a representative CFL restriction is:
+
+Delta t_adv <= C_adv h/U_max
+
+For explicit viscous diffusion in two dimensions on a uniform square grid,
+a common forward-Euler restriction is:
+
+Delta t_visc <= h^2/(4 nu)
+
+where h is grid spacing, nu is kinematic viscosity, and C_adv depends on
+the numerical scheme and dimensionality.
+
+For oscillatory motion, resolve the period with enough time steps:
+
+Delta t <= T/N_T
+
+where N_T is the selected number of steps per cycle. This is an accuracy
+requirement, not a universal stability limit.
+
+The final time step must satisfy the most restrictive relevant condition:
+advection, diffusion, membrane motion, coupling stiffness, pressure-solver
+accuracy, and the temporal resolution required by the physical question.
+
+13. BOUNDARY CONDITIONS AND PHYSICAL CONSISTENCY
+------------------------------------------------
+
+The model must state boundary conditions explicitly.
+
+No-slip solid wall:
+
+u = U_wall
+
+For a stationary wall U_wall = 0. For a prescribed moving wall, U_wall is
+the wall velocity.
+
+Inlet conditions may prescribe velocity or flow rate. Outlet conditions
+may prescribe pressure or a traction condition. These choices must be
+compatible with incompressibility and the global volume balance.
+
+A periodic computational box is useful for numerical tests, but it has no
+physical inlet, outlet, or sealed chamber wall unless these are explicitly
+represented.
+
+For a chamber with incompressible fluid, the net flux through its boundary
+must satisfy:
+
+integral_boundary u dot n dS = 0
+
+for a fixed impermeable closed boundary. With a moving boundary, the
+relative normal flux must be consistent with boundary velocity and any
+ports.
+
+14. VERIFICATION AND VALIDATION
+-------------------------------
+
+Verification asks whether the equations have been solved correctly.
+Validation asks whether the equations and assumptions represent the
+physical system adequately.
+
+Analytical kinematics:
+- Compare numerical position with y_m(t).
+- Compare numerical velocity with dy_m/dt.
+- Check maximum speed omega A and period T.
+
+Incompressibility:
+- Measure divergence before and after projection.
+- Report an RMS or maximum norm, not just a plot.
+
+Pressure solve:
+- Monitor the Poisson residual:
+
+r_p = laplacian(p) - (rho/Delta t) div(u_star)
+
+- Check that the residual decreases with solver iterations.
+
+Immersed-boundary transfer:
+- Check that the integrated force on the grid agrees with the integrated
+  marker force, accounting for grid and marker quadrature.
+- Check interpolation of a constant velocity field.
+- Check kernel partition-of-unity and first-moment properties where
+  required by the chosen kernel.
+- Check sensitivity to marker spacing relative to grid spacing.
+
+Global chamber conservation:
+- Compare measured dV/dt with Q_in - Q_out.
+- Check that net transported volume over a complete periodic cycle is
+  consistent with the volume returning to its initial value.
+
+Coupling:
+- Monitor marker slip:
+
+e_slip = U_interpolated - U_target
+
+- Monitor force, pressure, velocity, and membrane deformation.
+- Vary time step, grid spacing, pressure iterations, and penalty gain.
+- Check whether results converge rather than merely looking smooth.
+
+Grid and time convergence:
+- Repeat the same physical case with finer grids and smaller time steps.
+- Compare pressure drop, flow rate, membrane displacement, and cycle work.
+- Distinguish numerical convergence from agreement with experimental data.
+
+15. LIMITATIONS OF THE CURRENT PROJECT PROTOTYPES
+-------------------------------------------------
+
+The current project materials describe several distinct educational tests:
+- analytical sinusoidal membrane kinematics;
+- a periodic spectral pressure-projection test;
+- regularised-kernel force-spreading and interpolation checks;
+- an oscillating-lid cavity prototype;
+- a periodic translating-line immersed-boundary coupling demonstration.
+
+These tests isolate useful numerical ideas. They are not yet a validated
+closed, deforming chamber with physically consistent inlet/outlet ports.
+The translating periodic line moves tangentially and does not pump a
+chamber. The oscillating-lid cavity is a moving-wall fluid benchmark, not
+an internal membrane. The pressure projection tests use simplified
+discretisations and boundary conditions.
+
+Do not infer pump performance, physiological accuracy, or a validated
+two-way FSI model from these prototypes.
+
+16. SYMBOLS
+-----------
+
+A       displacement amplitude or enclosed area (context-dependent)
+A_c     chamber cross-sectional area
+a_m     membrane acceleration
+b       chamber depth
+C_adv   advection CFL coefficient
+d       membrane displacement
+delta   Dirac delta distribution
+delta_h regularised discrete delta kernel
+Delta t time step
+Delta V chamber volume amplitude
+Delta p pressure difference
+Delta s membrane marker spacing
+dx,dy  Eulerian grid spacing
+E       elastic strain energy
+f       frequency [Hz] or membrane force density (context-dependent)
+F       Eulerian force density
+K       effective stretching stiffness
+k_s     spring stiffness
+k_b     bending stiffness
+L       characteristic length
+mu      dynamic viscosity
+nu      kinematic viscosity
+n       outward unit normal
+omega   angular frequency
+p       pressure
+P_h     hydraulic power
+Q       volumetric flow rate
+R_h     hydraulic resistance
+Re      Reynolds number
+s       Lagrangian material coordinate
+St      Strouhal number
+T       period or traction (context-dependent)
+t       time
+U       characteristic speed or interpolated marker velocity
+U_b     membrane boundary velocity
+u       Eulerian fluid velocity
+V       chamber volume
+X       Lagrangian membrane position
+rho     fluid density
+alpha   Womersley number
+
+17. CORE REFERENCES
+-------------------
+
+Peskin, C. S. (1977). Numerical Analysis of Blood Flow in the Heart.
+Journal of Computational Physics, 25(3), 220–252.
+https://doi.org/10.1016/0021-9991(77)90100-0
+
+Peskin, C. S. (2002). The immersed boundary method.
+Acta Numerica, 11, 479–517.
+https://doi.org/10.1017/S0962492902000077
+
+McQueen, D. M., Peskin, C. S., and Zhu, L. (2001). The immersed boundary
+method for incompressible fluid–structure interaction.
+(See the immersed-boundary review literature for formulation details.)
+
+Sotiropoulos, F. and colleagues; and the review:
+Immersed Methods for Fluid–Structure Interaction, Annual Review of Fluid
+Mechanics (2020).
+https://doi.org/10.1146/annurev-fluid-010719-060228
+
+The references describe general immersed-boundary and FSI theory. The
+specific numerical choices in this project are simplified educational
+approximations and should not be attributed as exact reproductions of
+the cited methods.
