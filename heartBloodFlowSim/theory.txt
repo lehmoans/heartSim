@@ -1,0 +1,1122 @@
+HEART BLOOD-FLOW SIMULATION — THEORY NOTES
+==========================================
+
+Repository: lehmoans/heartSim
+Location: heartBloodFlowSim/theory.txt
+
+Purpose
+-------
+This document collects the mathematical and physical theory needed to understand the
+educational immersed-boundary (IB) heart-flow simulator. It is intended as a study
+document. Equations are written in Word Equation Editor linear-input form: in Word,
+press Alt+= to create an equation, then paste the equation line. Use the surrounding
+text for definitions and assumptions.
+
+MODEL SCOPE AND FIDELITY
+-----------------------
+The project is a learning implementation inspired by:
+
+C. S. Peskin (1977), "Numerical Analysis of Blood Flow in the Heart",
+Journal of Computational Physics, 25, 220–252.
+DOI: 10.1016/0021-9991(77)90100-0.
+
+The core model is a two-dimensional, incompressible, Newtonian fluid on a fixed
+Cartesian Eulerian grid. Moving heart-wall and valve structures are represented by
+Lagrangian marker points connected by mechanical links. A regularised delta kernel
+transfers force from the moving structure to the fluid grid and transfers fluid
+velocity back to the structure.
+
+This repository is a teaching implementation, not a complete reproduction of every
+equation, geometry, parameter, discretisation, or result in Peskin (1977). In
+particular, simple spring laws, a triangular hat kernel, and a periodic Fourier
+Poisson demonstration are pedagogical choices. They must not be described as the
+exact original paper's implementations.
+
+The first objective is to understand and validate the separate mathematical
+components. A realistic cardiac cycle, realistic tissue constitutive laws, full
+valve geometry, source/sink circulation model, and fully validated fluid-structure
+interaction (FSI) are later extensions.
+
+======================================================================
+1. PHYSICAL DESCRIPTION AND CONTINUUM ASSUMPTIONS
+======================================================================
+
+1.1 What is being modelled?
+
+Blood is treated initially as a Newtonian fluid with constant density and dynamic
+viscosity. This is a useful first approximation for understanding flow and numerical
+coupling. Real blood can exhibit non-Newtonian behaviour, especially in small vessels
+and low-shear conditions; that complexity is outside the initial model.
+
+The fluid occupies a time-dependent region, but the computational fluid grid remains
+fixed. The heart wall and valve leaflets move through this grid. Their mechanical
+action is represented as a force applied to the fluid.
+
+Initial assumptions:
+- Constant fluid density rho.
+- Constant dynamic viscosity mu.
+- Incompressible flow.
+- Newtonian constitutive behaviour.
+- Two spatial dimensions for the initial implementation.
+- Fluid solved on a fixed Cartesian grid.
+- Tissue represented by Lagrangian points and links.
+- No turbulence model in the initial low-complexity solver.
+- Gravity may be omitted initially; if included, it is a body-force term.
+- Boundary conditions and geometry are simplified for individual numerical tests.
+
+1.2 Eulerian and Lagrangian descriptions
+
+Eulerian description:
+The fluid velocity and pressure are described at fixed spatial coordinates.
+
+u(x,t) = fluid velocity at position x and time t
+p(x,t) = fluid pressure at position x and time t
+
+Lagrangian description:
+The immersed tissue is described by material coordinates s. A material point moves
+through physical space and has position:
+
+X(s,t) = position of tissue point labelled by s at time t
+
+The boundary velocity is:
+
+U_b(s,t) = partial X(s,t) / partial t
+
+The distinction matters because the fluid grid does not move with the tissue, while
+the Lagrangian markers do.
+
+======================================================================
+2. CONSERVATION LAWS AND NAVIER–STOKES EQUATIONS
+======================================================================
+
+2.1 Conservation of mass
+
+The general compressible continuity equation is:
+
+partial rho / partial t + div(rho u) = 0
+
+For constant density, this reduces to:
+
+div(u) = 0
+
+In Cartesian coordinates in two dimensions:
+
+partial u_x / partial x + partial u_y / partial y = 0
+
+Physical meaning:
+For an incompressible fluid, a small fluid element does not change its volume. Fluid
+cannot accumulate locally through compression. The velocity field must therefore
+have zero divergence.
+
+Divergence is a measure of local volumetric expansion or contraction:
+- Positive divergence: local expansion.
+- Negative divergence: local compression.
+- Zero divergence: locally volume-preserving flow.
+
+2.2 Conservation of momentum
+
+Newton's second law applied to a continuum gives the momentum equation. For a
+constant-density Newtonian incompressible fluid with an immersed force density:
+
+rho [ partial u / partial t + (u dot grad)u ]
+    = -grad(p) + mu Laplacian(u) + F
+
+In Word Equation Editor:
+
+\rho\left(\frac{\partial\mathbf{u}}{\partial t}
++(\mathbf{u}\cdot\nabla)\mathbf{u}\right)
+=-\nabla p+\mu\nabla^2\mathbf{u}+\mathbf{F}
+
+Together with:
+
+\nabla\cdot\mathbf{u}=0
+
+Definitions:
+rho = fluid density [kg/m^3]
+u = fluid velocity vector [m/s]
+t = time [s]
+p = pressure [Pa]
+mu = dynamic viscosity [Pa s]
+F = immersed force per unit volume [N/m^3]
+grad(p) = pressure gradient
+Laplacian(u) = spatial diffusion of velocity
+(u dot grad)u = convective acceleration
+
+Every term in the momentum equation has units of force per unit volume:
+
+rho * acceleration = (kg/m^3)(m/s^2) = N/m^3
+
+Pressure-gradient units:
+Pa/m = (N/m^2)/m = N/m^3
+
+Viscous term units:
+mu * (velocity / length^2)
+= (Pa s)(m/s/m^2) = N/m^3
+
+2.3 Meaning of each momentum term
+
+A. Local acceleration:
+
+partial u / partial t
+
+Describes how velocity changes with time at a fixed location.
+
+B. Convective acceleration:
+
+(u dot grad)u
+
+Describes how a moving fluid particle experiences changes in velocity because it
+travels through regions with different velocity. In 2D:
+
+(u dot grad)u =
+u_x * partial u / partial x + u_y * partial u / partial y
+
+C. Pressure force:
+
+-grad(p)
+
+Pressure differences drive and redistribute fluid momentum. In an incompressible
+solver, pressure also acts as the constraint force that adjusts velocity so that the
+discrete velocity field is divergence-free.
+
+D. Viscous diffusion:
+
+mu * Laplacian(u)
+
+Viscosity transports momentum between neighbouring fluid regions and resists
+velocity gradients. For constant mu and incompressible Newtonian flow, the viscous
+term takes this simple Laplacian form.
+
+E. Immersed force density:
+
+F
+
+Represents the force exerted on the fluid by the immersed heart wall, valve leaflets,
+or other modelled structures. It is not an additional pressure term. It is a force
+per unit volume distributed over nearby Eulerian grid cells.
+
+2.4 Component equations in 2D
+
+Let u = (u,v), with x and y coordinates. The incompressible continuity equation is:
+
+partial u / partial x + partial v / partial y = 0
+
+The x-momentum equation is:
+
+rho [ partial u/partial t + u partial u/partial x
+      + v partial u/partial y ]
+= -partial p/partial x
+  + mu [ partial^2 u/partial x^2 + partial^2 u/partial y^2 ]
+  + F_x
+
+The y-momentum equation is:
+
+rho [ partial v/partial t + u partial v/partial x
+      + v partial v/partial y ]
+= -partial p/partial y
+  + mu [ partial^2 v/partial x^2 + partial^2 v/partial y^2 ]
+  + F_y
+
+These are the equations the fluid solver must approximate numerically.
+
+2.5 Kinematic viscosity
+
+Kinematic viscosity is dynamic viscosity divided by density:
+
+nu = mu / rho
+
+Units:
+
+[m^2/s]
+
+It is useful because dividing the momentum equation by density gives:
+
+partial u/partial t + (u dot grad)u
+= -(1/rho) grad(p) + nu Laplacian(u) + F/rho
+
+2.6 Illustrative blood-like values
+
+The notebook currently uses illustrative values:
+
+rho = 1060 kg/m^3
+mu = 0.0035 Pa s
+nu = mu/rho
+
+These are demonstration inputs, not parameters fitted to Peskin (1977), nor a
+patient-specific blood model. The physical parameter set should be documented and
+checked before interpreting physiological results.
+
+======================================================================
+3. NON-DIMENSIONALISATION AND FLOW REGIMES
+======================================================================
+
+Non-dimensionalisation compares the relative importance of physical effects.
+
+Choose characteristic length L, velocity U, and time L/U.
+
+The Reynolds number is:
+
+Re = rho U L / mu = U L / nu
+
+Interpretation:
+- Low Re: viscous effects are relatively important.
+- High Re: inertial effects are relatively important.
+- Re does not alone determine whether a flow is turbulent; geometry, disturbances,
+  and unsteadiness also matter.
+
+The unsteady Womersley number is useful for pulsatile internal flow:
+
+alpha = R * sqrt(omega * rho / mu)
+
+where:
+R = characteristic vessel or chamber length scale (often radius)
+omega = angular frequency of pulsation [rad/s]
+
+It compares unsteady inertia with viscous diffusion in oscillatory flow. It is a
+useful later diagnostic for pulsatile cardiovascular flow, but it is not required
+for the first numerical implementation.
+
+For periodic motion:
+
+omega = 2*pi*f
+
+where f is frequency in cycles per second.
+
+======================================================================
+4. IMMERSED-BOUNDARY METHOD: CORE IDEA
+======================================================================
+
+4.1 Why an immersed-boundary method?
+
+A heart wall and valve leaflets move and deform. A body-fitted fluid mesh would need
+to deform or be regenerated as these structures move. This can be difficult when
+surfaces undergo large deformation or interact with the flow.
+
+The immersed-boundary method avoids moving the fluid mesh:
+- Fluid variables remain on a fixed Eulerian Cartesian grid.
+- Tissue is represented by moving Lagrangian markers.
+- Tissue forces are spread to nearby fluid cells.
+- Fluid velocity is interpolated back to the tissue markers.
+- The two systems exchange information at every time step.
+
+This is a fluid-structure interaction method: the fluid affects tissue motion and
+tissue forces affect the fluid.
+
+4.2 Boundary force spreading
+
+Let f(s,t) be force per unit Lagrangian coordinate acting on the fluid through the
+immersed boundary. The Eulerian force density is:
+
+F(x,t) = integral f(s,t) delta_h(x - X(s,t)) ds
+
+Word equation form:
+
+\mathbf{F}(\mathbf{x},t)
+=\int \mathbf{f}(s,t)\,\delta_h(\mathbf{x}-\mathbf{X}(s,t))\,ds
+
+The regularised delta function is centred at each boundary point. It distributes
+that point's force over a small neighbourhood of the fixed fluid grid.
+
+The result F(x,t) is a force density, not a point force.
+
+4.3 Velocity interpolation
+
+The boundary point moves with the local fluid velocity interpolated from the grid:
+
+partial X(s,t)/partial t
+= integral u(x,t) delta_h(x - X(s,t)) dx
+
+Word equation form:
+
+\frac{\partial\mathbf{X}(s,t)}{\partial t}
+=\int\mathbf{u}(\mathbf{x},t)
+\delta_h(\mathbf{x}-\mathbf{X}(s,t))\,d\mathbf{x}
+
+This is the no-slip coupling condition in the IB formulation: the immersed boundary
+is carried by the fluid velocity evaluated at the boundary.
+
+For a prescribed-motion test, X(s,t) may instead be specified directly. That is a
+one-way or prescribed-kinematics test, not fully two-way fluid-structure coupling.
+
+4.4 Regularised delta function
+
+The mathematical Dirac delta is singular. A numerical method uses a smooth,
+grid-dependent approximation delta_h with compact support.
+
+In multiple dimensions, a common tensor-product form is:
+
+delta_h(x) = (1/h^d) product over dimensions of phi(x_j/h)
+
+For 2D:
+
+delta_h(x,y) = (1/h^2) phi(x/h) phi(y/h)
+
+Here h is grid spacing and phi is a one-dimensional kernel.
+
+The current teaching notebook uses the triangular hat kernel:
+
+phi(r) = max(1 - |r|, 0)
+
+It has compact support over |r| < 1. It is simple for demonstrating interpolation
+and spreading, but it is not claimed to be the exact improved kernel used in the
+original paper.
+
+4.5 Discrete force spreading
+
+For a uniform 2D grid with spacing h and boundary markers indexed by k:
+
+F_ij = sum_k f_k delta_h(x_ij - X_k) Delta s_k
+
+where Delta s_k is the Lagrangian quadrature weight or marker spacing, depending on
+how the discrete boundary force is defined.
+
+For a single point force in 2D, a simple illustrative expression is:
+
+F_ij = F_b * w_ij / h^2
+
+where w_ij is the dimensionless kernel weight. The exact scale must be consistent
+with the units and definition of the marker force.
+
+4.6 Discrete velocity interpolation
+
+For marker k:
+
+U_k = sum_ij u_ij delta_h(x_ij - X_k) h^2
+
+If the kernel is normalised correctly, interpolation of a constant velocity field
+should return that same constant velocity.
+
+4.7 Transfer properties to test
+
+Partition of unity:
+The discrete interpolation weights should sum to one:
+
+sum_ij delta_h(x_ij - X_k) h^2 = 1
+
+Constant preservation:
+If u_ij = U_0 at all grid points, then:
+
+U_k = U_0
+
+Force conservation:
+The integral of the spread force density should equal the total boundary force,
+up to quadrature and discretisation error:
+
+integral F(x,t) dx = integral f(s,t) ds
+
+Power consistency:
+With compatible spreading and interpolation operators, the work done by the
+boundary force on the fluid should match the work done by the corresponding
+Lagrangian force against the interpolated boundary velocity, up to discretisation
+details. This is an important structural property of IB schemes.
+
+======================================================================
+5. TISSUE MECHANICS: LINKS, SPRINGS, AND BOUNDARY FORCES
+======================================================================
+
+5.1 Lagrangian marker network
+
+The immersed wall or leaflet is represented by points X_k. Links connect selected
+pairs of points. A link network defines how the structure resists deformation.
+
+A link may represent local stretching resistance. A closed network can approximate
+a membrane or boundary curve. The connectivity is fixed even though marker
+positions change.
+
+5.2 Geometry of one link
+
+For endpoints A and B:
+
+d = X_B - X_A
+L = |d|
+q = d/L
+
+where:
+d = link vector
+L = current link length
+q = unit vector along the link
+
+Let L_0 be the resting length.
+
+5.3 Linear spring law
+
+A simple teaching model uses a linear spring with stiffness k_s:
+
+F_A = k_s (L - L_0) q
+F_B = -F_A
+
+The sign convention above makes a stretched link pull its endpoints together.
+If L > L_0, the force on A points towards B and the force on B points towards A.
+
+The forces are equal and opposite:
+
+F_A + F_B = 0
+
+This is internal force balance. A link cannot create net force on the entire
+isolated structure.
+
+The spring potential energy is:
+
+E_s = (1/2) k_s (L - L_0)^2
+
+The magnitude of the spring force is:
+
+|F_s| = k_s |L - L_0|
+
+Units of stiffness depend on the force definition. For a discrete point spring,
+k_s has units N/m. For a continuum membrane tension, units and quadrature factors
+must be defined consistently.
+
+5.4 Multiple links
+
+For marker k connected to neighbouring markers, the net elastic force is the sum
+of contributions from all connected links:
+
+F_k = sum over links incident on k of F_(link,k)
+
+The full boundary force vector is assembled from all marker forces.
+
+A network can still have unstable deformation modes even if each individual spring
+law is restoring. Stability depends on topology, geometry, stiffness, time
+integration, and how the boundary is coupled to the fluid.
+
+5.5 Limits of a spring-only tissue model
+
+A simple spring network is not a complete cardiac tissue constitutive model.
+Real myocardium is anisotropic, nonlinear, active, and viscoelastic. Valve tissue
+also has nonlinear anisotropic mechanical behaviour.
+
+Later improvements may include:
+- Nonlinear tension-length relationships.
+- Bending resistance.
+- Area or volume constraints.
+- Viscoelastic damping.
+- Anisotropic fibre directions.
+- Active muscle contraction.
+- Separate constitutive models for myocardium and valve leaflets.
+
+These should be added only after the simpler link mechanics are tested.
+
+5.6 Prescribed motion versus force-driven motion
+
+Prescribed motion:
+The boundary location X(s,t) is imposed as a known function of time. This is useful
+for testing fluid response to a moving wall, but does not predict the wall motion.
+
+Force-driven motion:
+The boundary position is determined by the interaction of fluid forces, tissue
+elasticity, active muscle forces, and possibly structural inertia. This is a more
+complete FSI problem and requires a boundary mechanics model.
+
+The project should keep these two modes conceptually separate.
+
+======================================================================
+6. INCOMPRESSIBLE FLOW AND THE PRESSURE POISSON EQUATION
+======================================================================
+
+6.1 Why pressure is a constraint variable
+
+In incompressible flow, density is constant and velocity must satisfy:
+
+div(u) = 0
+
+Pressure adjusts so that the velocity field obeys this constraint. In a projection
+method, the velocity is first advanced without the final pressure correction. A
+pressure field is then calculated and used to remove the divergent component.
+
+6.2 Provisional velocity
+
+A generic explicit momentum predictor can be written:
+
+u* = u^n + Delta t [
+    - (u^n dot grad)u^n
+    + nu Laplacian(u^n)
+    + F^n/rho
+]
+
+This compact expression omits pressure in the predictor. Exact time discretisation,
+operator placement, and treatment of the immersed force depend on the selected
+scheme. It is a conceptual modern projection-method form, not a claim that it is
+identical to every detail of Peskin's 1977 algorithm.
+
+6.3 Pressure correction
+
+Correct provisional velocity using pressure:
+
+u^(n+1) = u* - (Delta t/rho) grad(p)
+
+Take divergence:
+
+div(u^(n+1)) = div(u*) - (Delta t/rho) Laplacian(p)
+
+Impose incompressibility:
+
+div(u^(n+1)) = 0
+
+Therefore:
+
+Laplacian(p) = (rho/Delta t) div(u*)
+
+Word equation form:
+
+\nabla^2 p=\frac{\rho}{\Delta t}\nabla\cdot\mathbf{u}^*
+
+This is the pressure Poisson equation.
+
+6.4 Why solving Poisson enforces incompressibility
+
+The pressure solution is chosen so that its gradient removes the divergence in the
+provisional velocity. Substituting the pressure equation into the corrected
+velocity's divergence gives zero in the continuous derivation.
+
+In a numerical method, the result depends on discrete operator compatibility.
+The discrete divergence, gradient, and Laplacian must be chosen consistently.
+
+6.5 Discrete projection
+
+Let D_h be the discrete divergence, G_h the discrete gradient, and L_h the
+discrete Laplacian. A compatible scheme should satisfy:
+
+D_h G_h = L_h
+
+The discrete pressure equation is:
+
+L_h p = (rho/Delta t) D_h u*
+
+The corrected velocity is:
+
+u^(n+1) = u* - (Delta t/rho) G_h p
+
+Then:
+
+D_h u^(n+1) approximately equals zero
+
+The remaining divergence should be consistent with solver tolerance and numerical
+round-off.
+
+6.6 Pressure reference level
+
+Only pressure differences affect the velocity correction. If p is a solution, then
+p plus any constant is also a solution. Therefore pressure is determined only up to
+an additive constant unless a reference pressure is imposed.
+
+For periodic Poisson problems, the right-hand side must have zero spatial mean.
+The zero Fourier mode is singular and is normally assigned a chosen reference value,
+often zero.
+
+======================================================================
+7. PERIODIC POISSON SOLVER AND FOURIER THEORY
+======================================================================
+
+7.1 Why Fourier methods help
+
+For a periodic domain, Fourier modes are eigenfunctions of constant-coefficient
+derivative operators. A differential equation can therefore be transformed into
+algebraic equations for each wave number.
+
+For a continuous Fourier mode:
+
+p(x) = p_hat exp(i k dot x)
+
+The Laplacian acts as:
+
+Laplacian(p) = -|k|^2 p
+
+Thus the Poisson equation:
+
+Laplacian(p) = rhs
+
+becomes:
+
+-|k|^2 p_hat = rhs_hat
+
+For nonzero wave number:
+
+p_hat = -rhs_hat / |k|^2
+
+The zero wave number has eigenvalue zero and corresponds to the arbitrary pressure
+constant. The mean of the right-hand side must be zero for a periodic solution.
+
+7.2 Discrete periodic Laplacian
+
+For a uniform 2D Cartesian grid, the five-point Laplacian is:
+
+L_h(p)_ij =
+[p_(i+1,j) - 2p_(i,j) + p_(i-1,j)]/h^2
++
+[p_(i,j+1) - 2p_(i,j) + p_(i,j-1)]/h^2
+
+Its Fourier eigenvalue is:
+
+lambda(k_x,k_y) =
+-4 sin^2(k_x h/2)/h^2
+-4 sin^2(k_y h/2)/h^2
+
+For each nonzero mode:
+
+p_hat(k_x,k_y) = rhs_hat(k_x,k_y) / lambda(k_x,k_y)
+
+Set the zero mode to the selected pressure reference, commonly zero.
+
+The notebook uses this discrete eigenvalue in its Fourier Poisson demonstration.
+This is an educational periodic solver, not the exact specialised fast Laplace
+solver from Peskin (1977).
+
+7.3 Periodic boundary condition limitation
+
+A periodic domain connects one edge to the opposite edge. This is mathematically
+convenient but is not automatically a realistic heart-domain boundary condition.
+A realistic chamber or circulation model needs suitable inlet, outlet, wall, and
+possibly source/sink conditions.
+
+======================================================================
+8. TIME DISCRETISATION AND NUMERICAL STABILITY
+======================================================================
+
+8.1 Time stepping
+
+The continuous equations evolve in time. A numerical solver advances from time
+t^n to t^(n+1):
+
+t^(n+1) = t^n + Delta t
+
+The time step Delta t must be small enough to resolve the physical motion and to
+maintain numerical stability for the selected discretisation.
+
+8.2 Explicit diffusion restriction
+
+For an explicit treatment of viscous diffusion on a uniform grid, a typical
+two-dimensional stability restriction scales as:
+
+Delta t <= h^2 / (4 nu)
+
+The exact constant depends on the scheme and grid. This is a stability estimate,
+not a universal rule for all solvers.
+
+8.3 Convective CFL restriction
+
+A typical explicit advection condition is:
+
+CFL = U Delta t / h
+
+For multidimensional Cartesian flow, a common estimate is:
+
+Delta t * (|u|/h_x + |v|/h_y) <= C_max
+
+where C_max depends on the numerical method. The time step should be reduced when
+flow speeds increase or grid spacing decreases.
+
+8.4 Elastic stiffness restriction
+
+A stiff spring network can introduce fast mechanical time scales. Increasing
+spring stiffness can require a smaller explicit time step. An implicit or
+semi-implicit boundary solve may be needed to avoid severe time-step restrictions.
+
+8.5 Accuracy versus stability
+
+A simulation can be numerically stable and still inaccurate. Accuracy must be
+assessed through:
+- Grid refinement.
+- Time-step refinement.
+- Comparison with analytical or manufactured solutions.
+- Conservation checks.
+- Residual monitoring.
+- Sensitivity to model assumptions and parameters.
+
+======================================================================
+9. COUPLED IMMERSED-BOUNDARY TIME STEP
+======================================================================
+
+The fluid and boundary equations are coupled. A conceptual time step is:
+
+1. Start with fluid velocity u^n and boundary configuration X^n.
+2. Evaluate boundary mechanical forces from X^n or from a trial updated position.
+3. Spread Lagrangian boundary forces to the Eulerian grid.
+4. Advance the fluid momentum equation to obtain provisional velocity u*.
+5. Solve the pressure Poisson equation.
+6. Correct the fluid velocity to obtain a divergence-free u^(n+1).
+7. Interpolate the fluid velocity to the Lagrangian boundary markers.
+8. Update boundary positions.
+9. Repeat for the next time step.
+
+For an explicit boundary update:
+
+X^(n+1) = X^n + Delta t * U_b^n
+
+where U_b^n is the interpolated fluid velocity at the boundary.
+
+This sequence is a conceptual operator split. The exact ordering and whether
+boundary positions are treated explicitly or implicitly depend on the chosen IB
+scheme.
+
+9.1 Why nonlinear solves can appear
+
+Boundary forces depend on the boundary configuration. But the boundary configuration
+at the next time level depends on fluid velocity, which itself depends on the
+boundary force. This creates an implicit coupling.
+
+A generic nonlinear system can be written:
+
+R(X^(n+1)) = 0
+
+where R is the residual of the coupled boundary update.
+
+Newton's method solves for a correction Delta X:
+
+J(X_m) Delta X = -R(X_m)
+
+X_(m+1) = X_m + Delta X
+
+where J is the Jacobian matrix:
+
+J = partial R / partial X
+
+The solve repeats until the residual or update is sufficiently small.
+
+A fixed boundary-link topology can produce a sparse Jacobian because each marker
+interacts directly only with nearby connected markers. Sparse linear algebra can
+therefore reduce computational cost.
+
+Peskin (1977) discusses a nonlinear fixed-point/boundary configuration calculation
+and exploitation of the link structure. A simple explicit spring update in this
+teaching repository is not equivalent to reproducing that complete nonlinear solve.
+
+======================================================================
+10. HEART-SPECIFIC PHYSIOLOGY AND FUTURE MODEL EXTENSIONS
+======================================================================
+
+10.1 Cardiac cycle
+
+A simplified cardiac cycle has four broad phases:
+- Ventricular filling.
+- Isovolumetric contraction.
+- Ventricular ejection.
+- Isovolumetric relaxation.
+
+The ventricle changes volume as the myocardium contracts and relaxes. Pressure
+differences open and close the valves, directing flow.
+
+A two-dimensional IB model can represent a moving chamber wall and deforming valve
+leaflets, but realistic valve opening and closure require suitable geometry,
+mechanics, and pressure/flow boundary conditions.
+
+10.2 Valves
+
+A valve leaflet is a deformable immersed structure. Its motion is influenced by:
+- Fluid pressure difference across the leaflet.
+- Fluid shear and hydrodynamic loading.
+- Leaflet elasticity and bending resistance.
+- Attachment constraints at the annulus or hinge.
+- Contact between leaflets, if closure is modelled.
+
+A simple spring network does not automatically capture leaflet bending, contact,
+or realistic tissue anisotropy.
+
+10.3 Active myocardium
+
+The myocardium is not purely passive elastic tissue. Muscle activation generates
+active tension that changes over the cardiac cycle.
+
+A later model may express total tissue force as:
+
+f_total = f_passive + f_active + f_viscous
+
+The active term may depend on time, activation state, fibre direction, and stretch.
+No specific active-tension law is currently implemented in the initial teaching
+model.
+
+10.4 Source and sink flow
+
+The original Peskin heart model includes source/sink treatment associated with
+pulmonary venous return and changing enclosed volume in a periodic computational
+setting. This is a specialised modelling component, not merely an arbitrary
+numerical correction.
+
+A future implementation must define:
+- Where fluid enters and leaves.
+- The physical meaning of each source or sink.
+- The prescribed or coupled flow rate.
+- How mass balance is maintained.
+- How the treatment interacts with pressure and the computational domain.
+
+Do not add source/sink terms until the closed-domain fluid solver and its mass
+balance have been tested.
+
+10.5 Reduced-order alternative
+
+A full IB simulation resolves spatial flow and deforming geometry. A reduced-order
+heart or pump model instead represents chambers, valves, and vessels through
+lumped pressure, volume, resistance, inertance, and compliance relationships.
+
+These approaches answer different questions. The IB solver investigates spatial
+fluid-structure behaviour; a reduced-order model is cheaper for whole-circulation
+or system-level dynamics.
+
+======================================================================
+11. BOUNDARY CONDITIONS AND DOMAIN CHOICES
+======================================================================
+
+The governing equations are not a complete problem until boundary and initial
+conditions are specified.
+
+Possible fluid boundary conditions include:
+
+No-slip stationary wall:
+u = 0
+
+Moving no-slip wall:
+u = U_wall
+
+Prescribed velocity inlet:
+u = u_in(t)
+
+Prescribed pressure outlet:
+p = p_out(t)
+
+Periodic boundary:
+u(x + L) = u(x), and corresponding periodic conditions for pressure and other
+fields.
+
+The appropriate choice depends on the physical question and geometry. A periodic
+box is convenient for numerical experiments but should not be mistaken for a
+complete physiological circulation boundary condition.
+
+Initial conditions include:
+- Initial velocity field u(x,0).
+- Initial pressure reference or pressure field.
+- Initial boundary marker positions X(s,0).
+- Initial tissue state or link rest lengths.
+
+======================================================================
+12. NUMERICAL VERIFICATION AND PHYSICAL VALIDATION
+======================================================================
+
+A visually plausible flow plot does not prove that a solver is correct.
+
+Verification asks: are the equations being solved correctly by the implementation?
+
+Validation asks: are the equations and assumptions an adequate representation of
+the physical system of interest?
+
+12.1 Unit and dimensional checks
+
+Check that all terms in each equation have matching units. In particular:
+- Momentum equation terms: N/m^3.
+- Velocity: m/s.
+- Pressure: Pa.
+- Dynamic viscosity: Pa s.
+- Density: kg/m^3.
+- Kinematic viscosity: m^2/s.
+- Boundary and fluid forces must use consistent definitions and units.
+
+12.2 Continuity check
+
+Monitor the divergence field:
+
+div(u)
+
+A useful scalar diagnostic is RMS divergence:
+
+D_RMS = sqrt( mean( [div(u)]^2 ) )
+
+It should be small relative to the characteristic velocity-gradient scale and should
+decrease appropriately as the pressure solve is tightened or the discretisation is
+refined.
+
+12.3 Poisson residual
+
+For the discrete pressure equation:
+
+r_p = L_h(p) - rhs
+
+Monitor a norm such as:
+
+||r_p||_2
+
+A small residual indicates that the discrete Poisson equation has been solved
+accurately. It does not by itself prove that the fluid model is physically correct.
+
+12.4 Force conservation
+
+Compare the total Lagrangian force with the integral of the spread Eulerian force:
+
+F_total,IB = sum_k f_k Delta s_k
+
+F_total,grid = sum_ij F_ij h^2
+
+These should agree to the accuracy expected from the quadrature and kernel.
+
+12.5 Internal force balance
+
+For an isolated spring link:
+
+F_A + F_B = 0
+
+For a closed network, the sum of internal link forces should also be zero, up to
+round-off and implementation details, if every link is assembled with equal and
+opposite endpoint contributions.
+
+12.6 Energy and work
+
+For a spring link:
+
+E_s = (1/2) k_s (L - L_0)^2
+
+Track boundary elastic energy over time. In a passive system, energy changes should
+be explainable by work exchanged with the fluid, viscous dissipation, and numerical
+error. If active muscle forcing is later added, it can inject energy.
+
+12.7 Grid and time refinement
+
+Run the same test with:
+- Smaller grid spacing h.
+- Smaller time step Delta t.
+- The same physical domain and physical parameters.
+
+A convergent method should show systematic behaviour as h and Delta t decrease.
+Compare quantitative quantities, not only images.
+
+12.8 Manufactured and analytical tests
+
+Before heart geometry, test:
+- Constant velocity interpolation.
+- Force spreading from one marker.
+- A single spring link.
+- A closed spring loop.
+- Viscous diffusion of a known velocity profile.
+- Periodic Poisson equation with a known manufactured solution.
+- Projection of a deliberately divergent velocity field.
+- Flow past a simple fixed or prescribed moving boundary.
+
+Each component should have a test with a known expected result.
+
+12.9 Diagnostics to log during simulation
+
+At each time step, record:
+- Time.
+- Maximum fluid speed.
+- RMS divergence.
+- Maximum absolute divergence.
+- Pressure Poisson residual.
+- Total spread force.
+- Net internal boundary force.
+- Boundary elastic energy.
+- Boundary displacement.
+- Time-step and grid parameters.
+
+These logs help distinguish physical behaviour from numerical instability.
+
+======================================================================
+13. IMPLEMENTATION ORDER FOR THIS REPOSITORY
+======================================================================
+
+The recommended progression is deliberately incremental.
+
+Stage 1 — Fluid equations and grid
+- Define the 2D Cartesian grid.
+- Implement discrete gradient, divergence, and Laplacian operators.
+- Test each operator on simple fields.
+- Implement a basic viscous/advection predictor.
+
+Stage 2 — Pressure projection
+- Derive the discrete pressure equation from the actual discrete velocity update.
+- Implement the Poisson solver.
+- Correct velocity.
+- Verify that divergence decreases.
+- Ensure the gradient, divergence, and Laplacian are compatible.
+
+Stage 3 — Boundary representation
+- Create Lagrangian marker points.
+- Define marker connectivity.
+- Store marker positions and link rest lengths.
+- Plot the boundary independently of the fluid.
+
+Stage 4 — Boundary mechanics
+- Implement one spring link.
+- Verify equal-and-opposite forces.
+- Extend to a closed loop or simple membrane.
+- Track elastic energy.
+
+Stage 5 — Delta-kernel transfer
+- Implement force spreading.
+- Implement velocity interpolation.
+- Verify partition of unity, constant preservation, and force conservation.
+- Check units and quadrature scaling.
+
+Stage 6 — One-way moving-boundary test
+- Prescribe simple boundary motion.
+- Spread boundary forces to the fluid.
+- Solve fluid flow.
+- Interpolate velocity for diagnostics.
+- Keep prescribed motion distinct from predicted motion.
+
+Stage 7 — Two-way coupling
+- Let boundary points move with interpolated fluid velocity.
+- Recompute tissue forces as the boundary changes.
+- Monitor stability and conservation.
+- Reduce the time step or use implicit coupling if required.
+
+Stage 8 — Heart geometry and physiology
+- Introduce a simplified chamber wall.
+- Add a valve leaflet and attachment constraints.
+- Add more realistic tissue mechanics.
+- Add activation and source/sink circulation treatment only after the simpler model
+  is stable and validated.
+
+======================================================================
+14. SYMBOL REFERENCE
+======================================================================
+
+x                 Eulerian spatial position [m]
+s                 Lagrangian material coordinate
+t                 Time [s]
+u                 Fluid velocity vector [m/s]
+u, v              Cartesian velocity components [m/s]
+p                 Fluid pressure [Pa]
+rho               Fluid density [kg/m^3]
+mu                Dynamic viscosity [Pa s]
+nu                Kinematic viscosity [m^2/s]
+F                 Eulerian immersed force density [N/m^3]
+f                 Lagrangian boundary force density or marker force, as defined
+                  by the chosen discretisation
+X                 Lagrangian boundary position [m]
+U_b               Boundary velocity [m/s]
+delta_h           Regularised delta kernel
+h                 Eulerian grid spacing [m]
+Delta s           Lagrangian marker quadrature spacing
+Delta t           Time step [s]
+L                 Current link length [m]
+L_0               Resting link length [m]
+k_s               Spring stiffness
+q                 Unit vector along a link
+E_s               Spring elastic energy [J]
+D_h               Discrete divergence operator
+G_h               Discrete gradient operator
+L_h               Discrete Laplacian operator
+u*                Provisional velocity before pressure correction
+Re                Reynolds number
+alpha             Womersley number
+omega             Angular frequency [rad/s]
+
+======================================================================
+15. PRIMARY REFERENCES
+======================================================================
+
+1. Peskin, C. S. (1977). "Numerical Analysis of Blood Flow in the Heart."
+   Journal of Computational Physics, 25, 220–252.
+   DOI: https://doi.org/10.1016/0021-9991(77)90100-0
+
+2. Peskin, C. S. (2002). "The Immersed Boundary Method."
+   Acta Numerica.
+   https://www.cambridge.org/core/journals/acta-numerica/article/
+   immersed-boundary-method/95ECDAC5D1824285563270D6DD70DA9A
+
+3. Chorin, A. J. (1968). "Numerical Solution of the Navier-Stokes Equations."
+   Mathematics of Computation, 22(104), 745–762.
+   This is a foundational reference for projection/fractional-step ideas.
+
+Study note:
+Use Peskin (1977) for the original heart-flow formulation and its historical
+numerical treatment. Use Peskin (2002) for a broader explanation of the immersed
+boundary method. This theory file explains the project's teaching model and
+separates standard governing theory from simplified implementation choices.
