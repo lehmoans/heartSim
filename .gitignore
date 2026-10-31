@@ -1,0 +1,56 @@
+# ==============================================================================
+# Python Virtual Environments
+# ==============================================================================
+# Common virtual environment directories
+.venv/
+venv/
+env/
+ENV/
+pyvenv/
+
+# Environment configuration and history files
+pyvenv.cfg
+.python-version
+pip-selfcheck.json
+.Python
+
+# Poetry, Pipenv, and Conda artifacts
+.pep8
+.pytest_cache/
+.poetry/
+.pipenv/
+conda-bld/
+.conda/
+
+# ==============================================================================
+# Visual Studio Code
+# ==============================================================================
+# Ignore the entire local VS Code configuration folder
+.vscode/
+
+# Alternatively, if you want to share team settings/tasks but ignore personal ones,
+# uncomment the lines below and comment out the '.vscode/' line above:
+# .vscode/settings.json
+# .vscode/tasks.json
+# .vscode/launch.json
+# .vscode/extensions.json
+# .vscode/snippets/
+
+# History and workspace storage
+.history/
+*.code-workspace
+
+# Local user data directories used by VS Code / extensions
+.vscode-test/
+.vscode-server/
+.vscode-remote/
+
+# ==============================================================================
+# Jupyter Notebooks (Autosaves and Checkpoints)
+# ==============================================================================
+# Ignore hidden checkpoint directories where older versions are saved
+.ipynb_checkpoints/
+.jupyter/
+
+# Ignore Jupyter Lab workspace data
+.jupyterlab_workspaces/

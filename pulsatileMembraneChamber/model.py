@@ -14,10 +14,6 @@ internal-membrane or production-quality immersed-boundary solver.
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Section 1 — Prescribed membrane kinematics
-import numpy as np
-import matplotlib.pyplot as plt
-
 # Illustrative, dimensionally consistent parameters.
 y0 = 0.50       # mean membrane position [m]
 amplitude = 0.05  # displacement amplitude [m]
@@ -46,15 +42,15 @@ plt.show()
 # Spectral projection test on a periodic square domain.
 # This cell tests pressure correction only; it is not a full Navier–Stokes time step.
 
-nx = ny = 64
+nx = ny = 64 #nodes
 Lx = Ly = 1.0
 dx, dy = Lx / nx, Ly / ny
 dt = 0.001
 rho = 1000.0
 
-x = np.arange(nx) * dx
-y = np.arange(ny) * dy
-Xg, Yg = np.meshgrid(x, y, indexing="xy")
+x = np.arange(nx) * dx #x points
+y = np.arange(ny) * dy #y points
+Xg, Yg = np.meshgrid(x, y, indexing="xy") #mesh
 
 # Arbitrary smooth periodic predictor field, not necessarily divergence-free.
 u_star = np.sin(2 * np.pi * Xg / Lx) + 0.25 * np.cos(2 * np.pi * Yg / Ly)
